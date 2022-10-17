@@ -32,7 +32,7 @@ balances: HashMap[address, uint256]
 allowances: HashMap[address, HashMap[address, uint256]]
 
 NFT: immutable(ERC721)
-owned_tokens: HashMap[uint256, uint256]    # internal id => ERC721 id
+owned_tokens: HashMap[uint256, uint256]  # internal id => ERC721 id
 current_counter: uint256
 
 
@@ -58,7 +58,7 @@ def balanceOf(_owner: address) -> uint256:
 
 @view
 @external
-def allowance(_owner : address, _spender : address) -> uint256:
+def allowance(_owner: address, _spender: address) -> uint256:
     """
     @notice Getter to check the amount of tokens that an owner allowed to a spender
     @param _owner The address which owns the funds
@@ -69,7 +69,7 @@ def allowance(_owner : address, _spender : address) -> uint256:
 
 
 @external
-def approve(_spender : address, _value : uint256) -> bool:
+def approve(_spender: address, _value: uint256) -> bool:
     """
     @notice Approve an address to spend the specified amount of tokens on behalf of msg.sender
     @dev Beware that changing an allowance with this method brings the risk that someone may use both the old
@@ -93,11 +93,13 @@ def _transfer(_from: address, _to: address, _value: uint256):
     assert self.balances[_from] >= _value, "Insufficient balance"
     self.balances[_from] -= _value
     self.balances[_to] += _value
+
+
     log Transfer(_from, _to, _value)
 
 
 @external
-def transfer(_to : address, _value : uint256) -> bool:
+def transfer(_to: address, _value: uint256) -> bool:
     """
     @notice Transfer tokens to a specified address
     @dev Vyper does not allow underflows, so attempting to transfer more
@@ -111,7 +113,7 @@ def transfer(_to : address, _value : uint256) -> bool:
 
 
 @external
-def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
+def transferFrom(_from: address, _to: address, _value: uint256) -> bool:
     """
     @notice Transfer tokens from one address to another
     @dev Vyper does not allow underflows, so attempting to transfer more
@@ -136,7 +138,7 @@ def wrap(ids: DynArray[uint256, 100]):
         NFT.transferFrom(msg.sender, self, _token_id)
         self.owned_tokens[self.current_counter] = _token_id
 
-    self.balances[msg.sender] += len(ids) * 10 ** self.decimals
+    self.balances[msg.sender] += len(ids) * 10**self.decimals
     self.current_counter += len(ids)
 
 
@@ -149,5 +151,3 @@ def unwrap():
     self.balances[msg.sender] -= 10**self.decimals
     self.owned_tokens[self.current_counter] = 0
     self.current_counter -= 1
-
-
