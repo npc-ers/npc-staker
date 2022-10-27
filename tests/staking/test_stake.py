@@ -1,6 +1,6 @@
-from brownie import *
 import brownie
 import pytest
+from brownie import *
 
 
 def test_cannot_stake_npc_without_approval(staker, npc, tetra):
@@ -21,12 +21,16 @@ def test_stake_npc(staked_nft, npc, tetra):
     assert npc.ownerOf(0) == staked_nft
 
 
-def test_stake_wrapped(staker, npc, esg_npc, esg_npc_holder):
-    bal = esg_npc.balanceOf(esg_npc_holder)
-    esg_npc.approve(staker, bal, {"from": esg_npc_holder})
-    staker.stake_wnpc(bal, {"from": esg_npc_holder})
+def test_stake_list_with_one_bogus(staker, npc, multiholder, multiholder_portfolio):
+    npc.setApprovalForAll(staker, True, {"from": multiholder})
+    init_bal = npc.balanceOf(multiholder)
+    with brownie.reverts():
+        staker.stake_npc(multiholder_portfolio + [0], {"from": multiholder})
+    assert npc.balanceOf(multiholder) == init_bal
 
-    assert esg_npc.balanceOf(esg_npc_holder) == 0
-    
 
-
+def test_can_stake_consecutive(staker, npc, multiholder, multiholder_portfolio):
+    npc.setApprovalForAll(staker, True, {"from": multiholder})
+    init_bal = npc.balanceOf(multiholder)
+    for i in multiholder_portfolio:
+        staker.stake_npc([i], {"from": multiholder})

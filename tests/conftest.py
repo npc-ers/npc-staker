@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import pytest
-from brownie import OrthodoxyCamp, accounts, Contract, ESG_NPC
+from brownie import ESG_NPC, Contract, OrthodoxyCamp, accounts
+
 
 @pytest.fixture(scope="function", autouse=True)
 def isolate(fn_isolation):
@@ -29,9 +30,11 @@ def tetra(npc):
 def thing():
     return Contract("0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB")
 
+
 @pytest.fixture(scope="function")
 def esg_npc(npc):
-    return ESG_NPC.deploy('ESG NPC', 'esgNPC', npc, {'from': accounts[0]})
+    return ESG_NPC.deploy("ESG NPC", "esgNPC", npc, {"from": accounts[0]})
+
 
 @pytest.fixture(scope="function")
 def staker(alice, thing, esg_npc):
@@ -53,17 +56,18 @@ def holder_bal():
 @pytest.fixture(scope="function")
 def staked_nft(staker, tetra, npc):
     assert npc.ownerOf(0) == tetra
-    #npc.approve(staker, 0, {"from": tetra})
-    npc.setApprovalForAll(staker, True, {'from': tetra})
+    # npc.approve(staker, 0, {"from": tetra})
+    npc.setApprovalForAll(staker, True, {"from": tetra})
     staker.stake_npc([0], {"from": tetra})
     return staker
 
 
 # Wrapped ERC
 
+
 @pytest.fixture(scope="function")
 def multiholder():
-    return '0x8AaDe16ad409A19b0FF990B30a9a0E65d32DEa7D'
+    return "0x8AaDe16ad409A19b0FF990B30a9a0E65d32DEa7D"
 
 
 @pytest.fixture(scope="function")
@@ -73,6 +77,6 @@ def multiholder_portfolio():
 
 @pytest.fixture(scope="function")
 def esg_npc_holder(multiholder, multiholder_portfolio, npc, esg_npc):
-    npc.setApprovalForAll(esg_npc, True, {'from': multiholder})
-    esg_npc.wrap(multiholder_portfolio, {'from': multiholder})
+    npc.setApprovalForAll(esg_npc, True, {"from": multiholder})
+    esg_npc.wrap(multiholder_portfolio, {"from": multiholder})
     return multiholder

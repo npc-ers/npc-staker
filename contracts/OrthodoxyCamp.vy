@@ -25,7 +25,7 @@ period_user_start: public( HashMap[address, uint256] ) # User -> Block Height
 finalized_rewards: public( HashMap[address, uint256] ) # Finalized rewards from prior blocks
 
 
-can_unstake: bool
+#can_unstake: bool
 owner: address
 
 # CONSTRUCTOR
@@ -36,7 +36,7 @@ def __init__(wnft: address):
     self.coin = ERC20(0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB)
     self.wnft = ERC20(wnft)
     self.inflation_rate = 1000  * 10 ** 18 / 7200 
-    self.can_unstake = False
+    #self.can_unstake = False
     self.owner = msg.sender
 
 
@@ -127,7 +127,7 @@ def withdraw():
     @notice Withdraw accrued $THING / $NPC if enabled
     @dev Admin must call admin_trigger_epoch
     """
-    assert self.can_unstake == True
+    #assert self.can_unstake == True
 
     qty: uint256 = self.staked_coin[msg.sender] + self._reward_balance(msg.sender)
     nfts: DynArray[uint256, 6000] = self.staked_nfts[msg.sender]
@@ -135,24 +135,28 @@ def withdraw():
     for i in nfts:
         self.nft.transferFrom(self, msg.sender, i)
 
+    if self.staked_coin[msg.sender] > 0:
+        self.wnft.transfer(msg.sender, self.staked_coin[msg.sender])
+
     contract_balance : uint256 = self.coin.balanceOf(self)
     if qty < contract_balance:
-        self.coin.transferFrom(self, msg.sender, qty)
+        self.coin.transfer(msg.sender, qty)
     else:
         ERC20Mint(self.coin.address).mint(msg.sender, qty - contract_balance)
-        self.coin.transferFrom(self, msg.sender, contract_balance)
+        self.coin.transfer(msg.sender, contract_balance)
 
     self._clear_staking(msg.sender)
 
+
 # ADMIN
 
-@external
-def admin_trigger_epoch(unstake_type: bool):
-    """
-    @notice Admin function to set epoch
-    @param unstake_type Boolean, True to allow withdrawals
-    """
-    assert msg.sender == self.owner
-    self.can_unstake = unstake_type
+#@external
+#def admin_trigger_epoch(unstake_type: bool):
+#    """
+#    @notice Admin function to set epoch
+#    @param unstake_type Boolean, True to allow withdrawals
+#    """
+#    assert msg.sender == self.owner
+#    self.can_unstake = unstake_type
 
 
