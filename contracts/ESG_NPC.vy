@@ -32,8 +32,10 @@ balances: HashMap[address, uint256]
 allowances: HashMap[address, HashMap[address, uint256]]
 
 NFT: immutable(ERC721)
-owned_tokens: HashMap[uint256, uint256]  # internal id => ERC721 id
-current_counter: uint256
+MAX_SUPPLY: constant(uint256) = 6000
+
+owned_tokens: public(HashMap[uint256, uint256])  # internal id => ERC721 id
+current_counter: public(uint256)
 
 
 @external
@@ -133,21 +135,37 @@ def transferFrom(_from: address, _to: address, _value: uint256) -> bool:
 def wrap(ids: DynArray[uint256, 100]):
     assert NFT.isApprovedForAll(msg.sender, self), "No Approval"
 
+    _counter: uint256 = self.current_counter
     for _token_id in ids:
         assert NFT.ownerOf(_token_id) == msg.sender, "Non-Owner"
         NFT.transferFrom(msg.sender, self, _token_id)
-        self.owned_tokens[self.current_counter] = _token_id
+        self.owned_tokens[_counter] = _token_id
+        _counter += 1
 
     self.balances[msg.sender] += len(ids) * 10**self.decimals
     self.current_counter += len(ids)
 
-
-@external
-def unwrap():
-    assert self.balances[msg.sender] >= 10**self.decimals, "Insufficient balance"
+@internal
+def _unwrap_one(target: address):
+    assert self.balances[msg.sender] >= 10 ** self.decimals, "Insufficient balance"
     assert self.current_counter > 0, "Supply drained"
 
-    NFT.transferFrom(self, msg.sender, self.owned_tokens[self.current_counter])
-    self.balances[msg.sender] -= 10**self.decimals
+    self.current_counter -= 1   
+    NFT.transferFrom(self, target, self.owned_tokens[self.current_counter])
+    self.balances[target] -= 10**self.decimals
     self.owned_tokens[self.current_counter] = 0
-    self.current_counter -= 1
+
+@external
+def unwrap(qty: uint256):
+    """
+    @notice Convert wrapped NFTs into NFT
+    @dev Must have 10 ** 18 tokens per NFT
+    @param qty Number of NFTs to unwrap
+    """
+    assert self.balances[msg.sender] >= 10 ** self.decimals * qty, "Insufficient balance"
+    
+    for i in range(MAX_SUPPLY):
+        if i >= qty:
+            break
+
+        self._unwrap_one(msg.sender)
