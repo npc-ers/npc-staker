@@ -25,7 +25,9 @@ period_user_start: public( HashMap[address, uint256] ) # User -> Block Height
 finalized_rewards: public( HashMap[address, uint256] ) # Finalized rewards from prior blocks
 
 
-#can_unstake: bool
+launch_block: public(uint256)
+interval: uint256
+
 owner: address
 
 # CONSTRUCTOR
@@ -38,7 +40,8 @@ def __init__(wnft: address):
     self.inflation_rate = 1000  * 10 ** 18 / 7200 
     #self.can_unstake = False
     self.owner = msg.sender
-
+    self.launch_block = block.number
+    self.interval = 5 * 60 * 60 
 
 # INTERNAL
 
@@ -77,6 +80,30 @@ def _clear_staking(addr: address):
 @view
 def _reward_balance(addr: address) -> uint256:
     return self.finalized_rewards[addr] + self._recent_rewards(addr)
+
+@internal
+@view
+def _current_epoch() -> uint256:
+    return (block.number - self.launch_block) / self.interval
+
+@external
+@view
+def current_epoch() -> uint256:
+    return self._current_epoch()
+
+@internal
+@view
+def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
+    """
+    @dev 10 ** 18
+    """
+    hash: bytes32 = keccak256( concat(convert(id, bytes32), convert(epoch, bytes32)  ))
+    return convert(slice(hash,0,1), uint256) * 10 / 256 + 1
+
+@external
+@view
+def calc_multiplier(id: uint256, epoch: uint256) -> uint256:
+    return self._calc_multiplier(id, epoch)
 
 # VIEWS
 
