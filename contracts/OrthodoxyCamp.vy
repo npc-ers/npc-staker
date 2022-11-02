@@ -37,27 +37,77 @@ def __init__(wnft: address):
     self.nft = ERC721(0xa5ea010a46EaE77bD20EEE754f6D15320358dfD8)
     self.coin = ERC20(0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB)
     self.wnft = ERC20(wnft)
-    self.inflation_rate = 1000  * 10 ** 18 / 7200 
-    #self.can_unstake = False
+
+    self.inflation_rate = 1000  * 10 ** 18 / 7200    # aka 1000 per day
+    self.interval = 1 # 5 * 60 * 60 * 24                 # aka 1 day
+
     self.owner = msg.sender
     self.launch_block = block.number
-    self.interval = 5 * 60 * 60 
+
 
 # INTERNAL
+
+@internal
+@view
+def _current_epoch() -> uint256:
+    return (block.number - self.launch_block) / self.interval
+
+
+@internal
+@view
+def _epoch_at(block_height: uint256) -> uint256:
+    return (block_height - self.launch_block) / self.interval 
+
+@external
+@view
+def epoch_at(block_height: uint256) -> uint256:
+    return self._epoch_at(block_height) 
+
+@internal
+@view
+def _calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
+    adder: uint256 = 0
+    for i in range(6000):
+        if i >= len(self.staked_nfts[user]):
+            break
+        adder += self._calc_multiplier(self.staked_nfts[user][i] , epoch)
+    return 10 ** 18 * adder / len(self.staked_nfts[user])
 
 @internal
 @view
 def _recent_rewards(user: address) -> uint256:
     blocks: uint256 = block.number - self.period_user_start[user]
     weight: uint256 = len(self.staked_nfts[user]) * 10 ** 18 + self.staked_coin[user]
+   
+    nft_id: uint256 = self.staked_nfts[user][0] # <--- just do the math for one for now
+    start_block: uint256 = self.period_user_start[user]
+    this_epoch: uint256 = self._epoch_at(start_block)
 
-    return blocks * weight * self.inflation_rate  / 10 ** 18
+    weight_tot: uint256 = 10 ** 18 * (start_block - this_epoch * self.interval) / self.interval # <-- Partial weight for first block
+    multiplier_tot: uint256 = weight_tot * self._calc_avg_multiplier(user, this_epoch) / 10 ** 18
+
+    this_epoch += 1
+    end_epoch: uint256 = self._current_epoch()
+    
+    for i in range(52):              # Max at a year
+        if this_epoch == end_epoch:
+            break
+        multiplier_tot += self._calc_avg_multiplier(user, this_epoch) # <--- Full weight
+        weight_tot += 10 ** 18
+        this_epoch += 1
+
+    if this_epoch <= end_epoch:
+        weight_tot += 10 ** 18 * (block.number - this_epoch * self.interval) / self.interval # <-- Partial weight for final block
+        multiplier_tot += self._calc_avg_multiplier(user, this_epoch) * (block.number - this_epoch * self.interval) / self.interval / 10 ** 18
+
+    base: uint256 = blocks * weight * self.inflation_rate / 10 ** 18 # <-- Unweighted val
+    return base * multiplier_tot / weight_tot # <--- Weighted val
+
 
 @external
 @view
 def recent_rewards(user: address) -> uint256:
     return self._recent_rewards(user)
-
 
 
 @internal
@@ -81,10 +131,6 @@ def _clear_staking(addr: address):
 def _reward_balance(addr: address) -> uint256:
     return self.finalized_rewards[addr] + self._recent_rewards(addr)
 
-@internal
-@view
-def _current_epoch() -> uint256:
-    return (block.number - self.launch_block) / self.interval
 
 @external
 @view
@@ -95,7 +141,7 @@ def current_epoch() -> uint256:
 @view
 def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
     """
-    @dev 10 ** 18
+    @dev Calc gas
     """
     hash: bytes32 = keccak256( concat(convert(id, bytes32), convert(epoch, bytes32)  ))
     return convert(slice(hash,0,1), uint256) * 10 / 256 + 1
