@@ -16,6 +16,15 @@ def test_balance_increases(staked_nft, tetra, thing, alice, npc, holder):
     assert round(staked_nft.reward_balance(tetra) * 60 * 24 / 10**18, 0) == 1000
 
 
+@pytest.mark.skip_coverage
+def test_withdraw_wrapped(staked_nft, tetra, npc, holder, esg_npc):
+    chain.mine(5)
+    assert esg_npc.balanceOf(tetra) == 0
+
+    staked_nft.withdraw_wrapped({'from': tetra})
+    assert esg_npc.balanceOf(tetra) > 0
+
+@pytest.mark.skip_coverage
 def test_withdraw_nft_balance_up(staked_nft, tetra, thing, alice, npc, holder):
     chain.mine(5)
     # staked_nft.admin_trigger_epoch(True, {"from": alice})
@@ -28,6 +37,7 @@ def test_withdraw_nft_balance_up(staked_nft, tetra, thing, alice, npc, holder):
     assert npc.balanceOf(tetra) > 0
 
 
+@pytest.mark.skip_coverage
 def test_withdraw_works_after_transfer(staked_nft, tetra, thing, alice, npc, holder):
     chain.mine(5)
     thing.mint(staked_nft, 10**18, {"from": thing.owner()})
@@ -41,6 +51,7 @@ def test_withdraw_works_after_transfer(staked_nft, tetra, thing, alice, npc, hol
     assert npc.balanceOf(tetra) > 0
 
 
+@pytest.mark.skip_coverage
 def test_withdraw_wnpc(staker, npc, esg_npc, esg_npc_holder, thing):
     thing_init = thing.balanceOf(esg_npc_holder)
     bal = esg_npc.balanceOf(esg_npc_holder)

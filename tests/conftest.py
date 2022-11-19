@@ -33,7 +33,8 @@ def thing():
 
 @pytest.fixture(scope="function")
 def esg_npc(npc):
-    return ESG_NPC.deploy("ESG NPC", "esgNPC", npc, {"from": accounts[0]})
+    esg_npc = ESG_NPC.deploy("ESG NPC", "esgNPC", npc, {"from": accounts[0]})
+    return esg_npc
 
 
 @pytest.fixture(scope="function")
