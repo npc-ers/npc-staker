@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import pytest
-from brownie import ESG_NPC, Contract, OrthodoxyCamp, accounts
+from brownie import (ESG_NPC, NPC, Contract, CurrentThing, OrthodoxyCamp,
+                     accounts, chain, network)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -17,18 +18,35 @@ def alice():
 
 
 @pytest.fixture(scope="function")
-def npc():
-    return Contract("0xa5ea010a46EaE77bD20EEE754f6D15320358dfD8")
+def bob():
+    return accounts[1]
 
 
 @pytest.fixture(scope="function")
-def tetra(npc):
-    return npc.ownerOf(0)
+def npc(alice):
+    if "fork" in network.show_active():
+        return Contract("0xa5ea010a46EaE77bD20EEE754f6D15320358dfD8")
+    else:
+        npc = NPC.deploy({"from": alice})
+        return npc
 
 
 @pytest.fixture(scope="function")
-def thing():
-    return Contract("0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB")
+def tetra(npc, alice):
+    if "fork" in network.show_active():
+        return npc.ownerOf(0)
+    else:
+        npc.mint(accounts[9], {"from": alice})
+        return npc.ownerOf(0)
+
+
+@pytest.fixture(scope="function")
+def thing(alice):
+    if "fork" in network.show_active():
+        thing = Contract("0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB")
+    else:
+        thing = CurrentThing.deploy({"from": alice})
+    return thing
 
 
 @pytest.fixture(scope="function")
@@ -38,8 +56,8 @@ def esg_npc(npc):
 
 
 @pytest.fixture(scope="function")
-def staker(alice, thing, esg_npc):
-    v = OrthodoxyCamp.deploy(esg_npc, {"from": alice})
+def staker(alice, thing, esg_npc, npc):
+    v = OrthodoxyCamp.deploy(npc, thing, esg_npc, {"from": alice})
     thing.admin_set_minter(v, {"from": thing.owner()})
     return v
 
@@ -60,6 +78,14 @@ def staked_nft(staker, tetra, npc):
     # npc.approve(staker, 0, {"from": tetra})
     npc.setApprovalForAll(staker, True, {"from": tetra})
     staker.stake_npc([0], {"from": tetra})
+    chain.mine(5)
+    return staker
+
+
+@pytest.fixture(scope="function")
+def multistaked_nft(staker, tetra, npc, multiholder, multiholder_portfolio):
+    npc.setApprovalForAll(staker, True, {"from": multiholder})
+    staker.stake_npc(multiholder_portfolio, {"from": multiholder})
     return staker
 
 
@@ -68,12 +94,22 @@ def staked_nft(staker, tetra, npc):
 
 @pytest.fixture(scope="function")
 def multiholder():
-    return "0x8AaDe16ad409A19b0FF990B30a9a0E65d32DEa7D"
+    if "fork" in network.show_active():
+        return "0x8AaDe16ad409A19b0FF990B30a9a0E65d32DEa7D"
+    else:
+        return accounts[9]
 
 
 @pytest.fixture(scope="function")
-def multiholder_portfolio():
-    return [1451, 1450, 1449, 3892, 1138]
+def multiholder_portfolio(multiholder, npc, alice):
+    if "fork" in network.show_active():
+        return [1451, 1450, 1449, 3892, 1138]
+    else:
+        ret_arr = []
+        for i in range(5):
+            npc.mint(multiholder, {"from": alice})
+            ret_arr.append(npc.tokenOfOwnerByIndex(multiholder, i))
+        return ret_arr
 
 
 @pytest.fixture(scope="function")
