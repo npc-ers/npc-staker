@@ -7,6 +7,7 @@ def test_cannot_stake_npc_without_approval(staker, npc, tetra):
     assert npc.ownerOf(0) == tetra
     with brownie.reverts():
         staker.stake_npc([0], {"from": tetra})
+    assert False
     assert npc.ownerOf(0) == tetra
 
 

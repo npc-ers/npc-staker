@@ -51,8 +51,6 @@ staked_users: public(DynArray[address, 6000])
 
 @external
 def __init__(nft: address, coin: address, wnft: address):
-    #self.nft = ERC721(0xa5ea010a46EaE77bD20EEE754f6D15320358dfD8)
-    #self.coin = ERC20(0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB)
     self.nft = ERC721(nft)
     self.coin = ERC20(coin)
     self.wnft = ESG_NPC(wnft)
@@ -273,18 +271,27 @@ def admin_trigger_epoch(current_thing: String[256]):
 @internal
 @view
 def _nft_balance_of(user: address) -> uint256:
+    """
+    @dev Number of unwrapped NFTs staked by a user
+    """
     return(len(self.staked_nfts[user]))
 
 
 @internal
 @view
 def _calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
+    """
+    @dev For user in a given epoch, calculate the average multiplier for all staked, unwrapped NPCs
+    """
+
+    # Sum up all multipliers for all NPCs
     adder: uint256 = 0
     for i in range(6000):
         if i >= len(self.staked_nfts[user]):
             break
         adder += self._calc_multiplier(self.staked_nfts[user][i] , epoch)
    
+    # Divide by bonus for staking a higher quantity
     retval: uint256 = 0
     if self._nft_balance_of(user) > 0:
         retval = self._bulk_bonus(self._nft_balance_of(user)) * adder / self._nft_balance_of(user) 
@@ -294,6 +301,9 @@ def _calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
 @internal
 @view
 def _calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
+    """
+    @dev Return the multiplier for a quantity of staked, wrapped ESG-NPCs
+    """
     adder: uint256 = 0
     for i in range(10):
         adder += self._calc_multiplier(i, epoch) 
@@ -305,35 +315,55 @@ def _calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
 @internal
 @view
 def _bulk_bonus(quantity: uint256) -> uint256:
+    """
+    @dev Bonus for staking a larger number of NPCs
+    """
     return isqrt(quantity * 10 ** 18 * 10 ** 18)
 
 
 @internal
 @view
 def _current_epoch() -> uint256:
+    """
+    @dev Each new "Current Thing" advances the epoch incrementer by 1
+    """
     return ERC20Epoch(self.coin.address).current_epoch()
 
 
 @internal
 @view
 def _curr_weight_for_user(user: address) -> uint256:
+    """
+    @dev Total weight for user's wrapped and unwrapped NPCs
+    """
+
     _nft_weight: uint256 = 0
+
+    # Unwrapped NPCs 
     if self._nft_balance_of(user) > 0:
         _nft_weight += self._nft_balance_of(user) * self._calc_avg_multiplier(user, self._current_epoch())
 
+    # Wrapped NPCs
     _coin_weight: uint256 = self.staked_coin[user] * self._calc_avg_coin_multiplier(self.staked_coin[user], self._current_epoch()) 
+
     return _nft_weight + _coin_weight    
 
 
 @internal
 @view
 def _recent_rewards(user: address) -> uint256:
+    """
+    @dev Rewards accrued since user last hit a checkpoint
+    """
     blocks: uint256 = block.number - self.period_user_start[user]
     return blocks * self._curr_weight_for_user(user) * self.inflation_rate  / 10 ** 18
 
 
 @internal
 def _store_recent_rewards(user: address):
+    """
+    @dev Set user checkpoint for rewards period
+    """
     if self.period_user_start[user] > 0:
         self.finalized_rewards[user] += self._recent_rewards(user) 
 
@@ -343,12 +373,18 @@ def _store_recent_rewards(user: address):
 
 @internal
 def _close_epoch_rewards():
+    """
+    @dev When writing a new current thing, set new checkpoints for all users (expensivo)
+    """
     for i in self.staked_users: 
         self._store_recent_rewards(i)
 
 
 @internal
 def _clear_staking(addr: address):
+    """
+    @dev Close out a user's position
+    """
     self.staked_coin[addr] = 0
     self.staked_nfts[addr] = []
     self._remove_from_staked_users(addr)
@@ -357,12 +393,18 @@ def _clear_staking(addr: address):
 @internal
 @view
 def _reward_balance(addr: address) -> uint256:
+    """
+    @dev Current user balance is rewards cachd at checkpoint plus uncached rewards
+    """
     return self.finalized_rewards[addr] + self._recent_rewards(addr)
 
 
 @internal
 @view
 def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
+    """
+    @dev Function to calculate a pseudorandom, deterministic multiplier for an NPC in any epoch, Poisson distribution
+    """
     hash: bytes32 = keccak256( concat(convert(id, bytes32), convert(epoch, bytes32) ))
 
     ret_val: uint256 = 1
@@ -374,7 +416,9 @@ def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
 
 @internal
 def _withdraw(user: address):
-
+    """
+    @dev Withdraw all NPCs
+    """
     # Withdraw NPCs
     if len(self.staked_nfts[user]) > 0:
         nfts: DynArray[uint256, 6000] = self.staked_nfts[user]
@@ -392,6 +436,9 @@ def _withdraw(user: address):
 
 @internal
 def _wrap_for_user(user: address):
+    """
+    @dev Wrap user's NPC into wrapped ESG-NPCs
+    """
     _bal: uint256 = 0
     for i in range(6000):
         if i >= len(self.staked_nfts[user]):
@@ -421,12 +468,18 @@ def _withdraw_rewards(user: address):
 
 @internal
 def _add_to_staked_users(user: address):
+    """
+    @dev Add a user to the index of staked users
+    """
     if user not in self.staked_users:
         self.staked_users.append(user)
 
 
 @internal
 def _remove_from_staked_users(user: address):
+    """
+    @dev Remove a user from index of staked users
+    """
     assert user != empty(address)
     assert user in self.staked_users
 
@@ -437,7 +490,3 @@ def _remove_from_staked_users(user: address):
             temp_array.append(cur_user)
 
     self.staked_users = temp_array
-
-
-
-
