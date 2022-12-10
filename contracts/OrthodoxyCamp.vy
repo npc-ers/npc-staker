@@ -128,6 +128,7 @@ def calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
 def recent_rewards(user: address) -> uint256:
     """
     @notice Rewards earned this epoch
+    @dev Mostly included for tests, may want to remove before launch
     @param user Address of user
     @return Rewards accumulated just this epoch
     """
@@ -149,6 +150,7 @@ def current_epoch() -> uint256:
 def calc_multiplier(id: uint256, epoch: uint256) -> uint256:
     """
     @notice Calculate the multiplier for a single NFT in a single epoch
+    @dev Rename to calc_nft_multplier
     @param id NFT identifier
     @param epoch Epoch number
     @return Multiplier for staking single NFT, 18 digits
@@ -172,6 +174,8 @@ def reward_balance(addr: address) -> uint256:
 def current_rate_for_user(addr: address) -> uint256:
     """
     @notice Earnings per block for user
+    @param addr Address to check
+    @return Earnings per block
     """
     return self._curr_weight_for_user(addr) * self.inflation_rate / 10 ** 18
 
@@ -268,6 +272,8 @@ def admin_trigger_epoch(current_thing: String[256]):
 # INTERNAL FUNCTIONS
 ##############################################################################
 
+# View Helpers
+
 @internal
 @view
 def _nft_balance_of(user: address) -> uint256:
@@ -276,6 +282,17 @@ def _nft_balance_of(user: address) -> uint256:
     """
     return(len(self.staked_nfts[user]))
 
+
+@internal
+@view
+def _current_epoch() -> uint256:
+    """
+    @dev Each new "Current Thing" advances the epoch incrementer by 1
+    """
+    return ERC20Epoch(self.coin.address).current_epoch()
+
+
+# Staking Logic Helpers
 
 @internal
 @view
@@ -309,7 +326,7 @@ def _calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
         adder += self._calc_multiplier(i, epoch) 
 
     # Returns sqrt 10 ** 18 == 10 ** 9, times 10 iterations
-    return adder * self._bulk_bonus(bal) / 10 ** 10
+    return adder * self._bulk_bonus(bal) / 10 ** 36
 
 
 @internal
@@ -319,15 +336,6 @@ def _bulk_bonus(quantity: uint256) -> uint256:
     @dev Bonus for staking a larger number of NPCs
     """
     return isqrt(quantity * 10 ** 18 * 10 ** 18)
-
-
-@internal
-@view
-def _current_epoch() -> uint256:
-    """
-    @dev Each new "Current Thing" advances the epoch incrementer by 1
-    """
-    return ERC20Epoch(self.coin.address).current_epoch()
 
 
 @internal
@@ -348,6 +356,8 @@ def _curr_weight_for_user(user: address) -> uint256:
 
     return _nft_weight + _coin_weight    
 
+
+# Rewards Helpers
 
 @internal
 @view
@@ -414,6 +424,9 @@ def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
 
     return ret_val 
 
+
+# State Modifying Helpers
+
 @internal
 def _withdraw(user: address):
     """
@@ -443,7 +456,7 @@ def _wrap_for_user(user: address):
     for i in range(6000):
         if i >= len(self.staked_nfts[user]):
             break
-        self.wnft.wrap([i])
+        self.wnft.wrap([self.staked_nfts[user][i]])
         _bal += 10 ** 18
     self.staked_nfts[user] = []
     self.staked_coin[user] += _bal
