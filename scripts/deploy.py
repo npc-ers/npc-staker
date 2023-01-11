@@ -1,5 +1,5 @@
 from brownie import *
-user = '0xb51074Da03c55E79e3526cF6bBf31873443EfC63'        
+user = 'YOUR_ADDRESS'
 
 def main():
     if network.show_active() == 'development':
