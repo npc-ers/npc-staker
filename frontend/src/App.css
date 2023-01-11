@@ -1,0 +1,21 @@
+main {
+  margin-top: 60px;
+}
+
+form {
+  width: 700px;
+  margin-bottom: 10px;
+}
+
+ul {
+  margin-bottom: 0px;
+}
+
+label {
+        float: left;
+}
+
+#completedTaskList .content {
+  color: grey;
+  text-decoration: line-through;
+}
