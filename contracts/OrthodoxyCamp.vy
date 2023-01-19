@@ -1,21 +1,61 @@
 # @version 0.3.7
 
+"""
+@title NPC Orthodoxy Camp
+@author npcers.eth
+@notice Send your NPC-er for reeducation and earn worthless $THING
+
+         :=+******++=-:                 
+      -+*+======------=+++=:            
+     #+========------------=++=.        
+    #+=======------------------++:      
+   *+=======--------------------:++     
+  =*=======------------------------*.   
+ .%========-------------------------*.  
+ %+=======-------------------------:-#  
++*========--------------------------:#  
+%=========--------------------------:#. 
+%=========--------------------+**=--:++ 
+#+========-----=*#%#=--------#@@@@+-::*:
+:%========-----+@@@@%=-------=@@@@#-::+=
+ -#======-------+@@@%=----=*=--+**=-::#:
+  :#+====---------==----===@%=------::% 
+    #+===-------------======@%=------:=+
+    .%===------------=======+@%------::#
+     #+==-----------=========+@%-------+
+     %===------------*%%%%%%%%@@#-----#.
+     %====-----------============----#: 
+     *+==#+----------+##%%%%%%%%@--=*.  
+     -#==+%=---------=+=========--*=    
+      +===+%+--------------------*-     
+       =====*#=------------------#      
+       .======*#*=------------=*+.      
+         -======+*#*+--------*+         
+          .-========+***+++=-.          
+             .-=======:           
+
+"""
 
 from vyper.interfaces import ERC721
 from vyper.interfaces import ERC20
-from ESG_NPC import ESG_NPC
-from tests.CurrentThing import CurrentThing
 
 
 ##############################################################################
 # INTERFACES
 ##############################################################################
 
-interface ERC20Mint:
-    def mint(recipient: address, amount: uint256): nonpayable
+interface ESG_NPC:
+    def balanceOf(_owner: address) -> uint256: view
+    def transfer(_to: address, _value: uint256) -> bool: nonpayable
+    def transferFrom(_from: address, _to: address, _value: uint256) -> bool: nonpayable
+    def wrap(ids: DynArray[uint256, 100]): nonpayable
 
-interface ERC20Epoch:
+interface CurrentThing:
+    def balanceOf(_owner: address) -> uint256: view
+    def transfer(_to: address, _value: uint256) -> bool: nonpayable
+    def new_current_thing(current_thing: String[256]): nonpayable
     def current_epoch() -> uint256: view
+    def mint(recipient: address, amount: uint256): nonpayable
 
 
 ##############################################################################
@@ -25,7 +65,7 @@ interface ERC20Epoch:
 nft: public(ERC721)
 wnft: public(ESG_NPC)
 coin: public(CurrentThing)
-
+kill_time: public(uint256)
 
 # Map of NFT ids
 staked_nfts: public(HashMap[address, DynArray[uint256, 6000]])
@@ -52,13 +92,13 @@ staked_users: public(DynArray[address, 6000])
 @external
 def __init__(nft: address, coin: address, wnft: address):
     self.nft = ERC721(nft)
-    self.coin = ERC20(coin)
+    self.coin = CurrentThing(coin)
     self.wnft = ESG_NPC(wnft)
     self.nft.setApprovalForAll(wnft, True)
     self.inflation_rate = 1000  * 10 ** 18 / 7200 
 
     self.owner = msg.sender
-
+    self.kill_time = 0
 
 ##############################################################################
 # VIEW FUNCTIONS
@@ -115,7 +155,7 @@ def calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
 def calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
     """
     @notice Multiplier for depositing wrapped NPC
-    @dev Calculated as the average multiplier for the first 10 NPCs
+    @dev Calculated as the average multiplier for the first 10 NPCs, exact units
     @param bal Balance affects the bulk bonus
     @param epoch Weight at epoch
     @return Multiplier, 18 digits
@@ -191,7 +231,7 @@ def stake_npc(nft_ids: DynArray[uint256, 100]):
     @param nft_ids List of NPC ids to stake
     """
     assert self.nft.isApprovedForAll(msg.sender, self)
-    #assert nft_id not in self.staked_nfts[msg.sender]
+    assert self.kill_time == 0
     
     for id in nft_ids:
         self.nft.transferFrom(msg.sender, self, id)
@@ -208,6 +248,8 @@ def stake_wnpc(quantity: uint256):
     @param quantity Amount of NPC to stake
     """
     assert self.wnft.balanceOf(msg.sender) >= quantity 
+    assert self.kill_time == 0
+
     # Staking minimum
     assert quantity > 10 ** 18 
 
@@ -223,7 +265,7 @@ def withdraw():
     """
     @notice Withdraw accrued $THING and $NPC if enabled
     """
-    self._withdraw(msg.sender)
+    self._withdraw(msg.sender, msg.sender)
 
 
 @external
@@ -241,7 +283,7 @@ def withdraw_wrapped():
     @notice Wrap, then withdraw all accrued $THING and wrapped NFTs
     """
     self._wrap_for_user(msg.sender)
-    self._withdraw(msg.sender)
+    self._withdraw(msg.sender, msg.sender)
 
 
 @external
@@ -268,6 +310,86 @@ def admin_trigger_epoch(current_thing: String[256]):
     self.coin.new_current_thing(current_thing)
 
 
+@external
+def admin_shutdown():
+    """
+    @notice Admin function to stop streaming
+    """
+    assert msg.sender == self.owner
+
+    self.kill_time = block.number + 6 * 60 * 24 * 7  # Kill time kicked to future
+    self.inflation_rate = 0
+    self._close_epoch_rewards()
+
+
+@external
+def admin_set_inflation(new_rate: uint256):
+    """
+    @notice Admin function to stop streaming
+    """
+    assert msg.sender == self.owner
+    self._close_epoch_rewards()
+    self.inflation_rate = new_rate
+
+
+@external
+def admin_force_withdraw(from_user: address, to_user: address):
+    """
+    @notice Allow admin to force claim for user after kill
+    """
+    assert msg.sender == self.owner
+    assert block.number > self.kill_time 
+
+    self._withdraw(from_user, to_user)
+
+
+@external
+def admin_force_transfer_nft(npc_id: uint256):
+    """
+    @notice Admin function to claim an NFT
+    """
+    assert msg.sender == self.owner
+    assert block.number > self.kill_time
+    self.nft.transferFrom(self, self.owner, npc_id)
+
+
+@external
+def admin_force_transfer_coin(bal: uint256):
+    """
+    @notice Admin function to claim an NFT
+    """
+    assert msg.sender == self.owner
+    assert block.number > self.kill_time
+    self.wnft.transfer(self.owner, bal)
+
+
+@external
+def admin_reclaim_erc20(addr: address, bal: uint256):
+    """
+    @notice Admin function to claim ERC20 tokens accidentally sent to contract
+    """
+    assert msg.sender == self.owner
+    ERC20(addr).transfer(self.owner, bal)
+
+
+@external
+def admin_reclaim_erc721(addr: address, id: uint256):
+    """
+    @notice Admin function to claim an NFT accidentally sent to contract
+    """
+    assert msg.sender == self.owner
+    ERC721(addr).transferFrom(self, self.owner, id)
+
+
+@external
+def admin_transfer_owner(new_owner: address):
+    """
+    @notice Allow admin to force claim of ERC20 tokens after contract kill cooldown
+    """
+    assert msg.sender == self.owner
+    self.owner = new_owner 
+
+
 ##############################################################################
 # INTERNAL FUNCTIONS
 ##############################################################################
@@ -289,7 +411,7 @@ def _current_epoch() -> uint256:
     """
     @dev Each new "Current Thing" advances the epoch incrementer by 1
     """
-    return ERC20Epoch(self.coin.address).current_epoch()
+    return self.coin.current_epoch()
 
 
 # Staking Logic Helpers
@@ -298,7 +420,7 @@ def _current_epoch() -> uint256:
 @view
 def _calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
     """
-    @dev For user in a given epoch, calculate the average multiplier for all staked, unwrapped NPCs
+    @dev For user in a given epoch, calculate the average multiplier for all staked, unwrapped NPCs, no units
     """
 
     # Sum up all multipliers for all NPCs
@@ -326,7 +448,7 @@ def _calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
         adder += self._calc_multiplier(i, epoch) 
 
     # Returns sqrt 10 ** 18 == 10 ** 9, times 10 iterations
-    return adder * self._bulk_bonus(bal) / 10 ** 36
+    return adder * self._bulk_bonus(bal) / 10 ** 10
 
 
 @internal
@@ -352,7 +474,7 @@ def _curr_weight_for_user(user: address) -> uint256:
         _nft_weight += self._nft_balance_of(user) * self._calc_avg_multiplier(user, self._current_epoch())
 
     # Wrapped NPCs
-    _coin_weight: uint256 = self.staked_coin[user] * self._calc_avg_coin_multiplier(self.staked_coin[user], self._current_epoch()) 
+    _coin_weight: uint256 = self.staked_coin[user] * self._calc_avg_coin_multiplier(self.staked_coin[user], self._current_epoch()) / 10 ** 18
 
     return _nft_weight + _coin_weight    
 
@@ -428,7 +550,7 @@ def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
 # State Modifying Helpers
 
 @internal
-def _withdraw(user: address):
+def _withdraw(user: address, to_user: address):
     """
     @dev Withdraw all NPCs
     """
@@ -436,11 +558,11 @@ def _withdraw(user: address):
     if len(self.staked_nfts[user]) > 0:
         nfts: DynArray[uint256, 6000] = self.staked_nfts[user]
         for i in nfts:
-            self.nft.transferFrom(self, user, i)
+            self.nft.transferFrom(self, to_user, i)
 
     # Withdraw Wrapped NPCs
     if self.staked_coin[user] > 0:
-        self.wnft.transfer(user, self.staked_coin[user])
+        self.wnft.transfer(to_user, self.staked_coin[user])
 
     # Withdraw $THING
     self._withdraw_rewards(user)
@@ -464,15 +586,12 @@ def _wrap_for_user(user: address):
 
 @internal
 def _withdraw_rewards(user: address):
-    """
-    @dev XXX Needs test to make sure rewards cannot be retriggered 
-    """
     qty: uint256 = self.staked_coin[user] + self._reward_balance(user)
     contract_balance : uint256 = self.coin.balanceOf(self)
     if qty < contract_balance:
         self.coin.transfer(user, qty)
     else:
-        ERC20Mint(self.coin.address).mint(user, qty - contract_balance)
+        self.coin.mint(user, qty - contract_balance)
         self.coin.transfer(user, contract_balance)
 
     self.period_user_start[user] = block.number
