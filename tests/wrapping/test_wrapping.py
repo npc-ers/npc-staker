@@ -20,7 +20,9 @@ def test_unwrap_succeeds(npc, esg_npc, multiholder, multiholder_portfolio):
     esg_npc.unwrap(1, {"from": multiholder})
 
     assert cur_bal + 1 == npc.balanceOf(multiholder)
+ 
 
+@pytest.mark.skip_coverage
 def test_can_retrieve_wrapped_from_staker(staker, multiholder, multiholder_portfolio, esg_npc, npc):
     init_bal = npc.balanceOf(multiholder)
     assert init_bal > 0
