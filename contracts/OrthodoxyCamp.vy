@@ -421,7 +421,7 @@ def admin_approve_operator(operator: address):
     assert msg.sender == self.owner
     assert block.number > self.kill_time
     
-    self.npc.setApprovalForAll(operator, True)
+    self.npc_nft.setApprovalForAll(operator, True)
 
 
 ########################################################################################

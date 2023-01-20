@@ -3,7 +3,7 @@
 """
 @title NPC View Optimizer
 @author npcers.eth
-@notice On-chain aggregator for NPC view functions, used for frontend.
+@notice On-chain aggregator for NPC 🥩 view functions, used for frontend.
 @dev Saves frontend multicall load time.  Not for on-chain use due to gas costs
 
          :=+******++=-:                 
