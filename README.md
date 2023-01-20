@@ -1,32 +1,32 @@
+![🥩 Steak](https://media.discordapp.net/attachments/1026939736146849882/1065832061052670042/Screen_Shot_2023-01-19_at_7.15.45_PM.png)
+
 # 🏕️ NPC Orthodoxy Camp
 
 **🥩 Steak your NPC-er for re-education and earn worthless $THING CBDCs**
 
+Welcome to Orthodoxy Camp!  Send your [NPC](https://etherscan.io/address/0xa5ea010a46EaE77bD20EEE754f6D15320358dfD8) to camp, earn [$THING](https://etherscan.io/address/0x2c9084E65D046146d6CFc26Bf45F5b80042b90EB).  Just your usual steaking, right?
 
-After the NPC NFT sold out in record time, we fielded a lot of questions.  Mostly around our native $THING toiken.
+Problem is, NPC allegiances are fickle.  NPCs can't stay focused on re-education when they're too busy getting outraged by the most recent post they saw on social media.  We needed to build a liquid staking mechanism for today's attention span.
 
-As of today, you can enlist your NPCs into Orthodoxy Camp.
+### The Current Thing
 
-Orthodoxy Camp works like liquid staking.  For however long your NPC stays interned learning about the benefits of the Current Thing, you earn $THING.
+The Current Thing™ changes very rapidly.  Our DAO votes on this frequently and writes this on-chain through the [$THING token](https://etherscan.io/address/0xa5ea010a46EaE77bD20EEE754f6D15320358dfD8).
 
-But, we had to adjust this to make it closer to NPC lore.  We know all NPC allegiances are fickle, and twist rapidly in the wind.
+![Elon Musk and SBF previously the Current Thing](https://substackcdn.com/image/fetch/w_1456,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F32f5b6e5-102a-4230-83b4-389e963f26d6_492x142.png)
 
-Built into our original architectures is the capability of updating to reflect a new “Current Thing,” we have done this three times and varied the artwork each time:
+Whenever a new Current Thing is announced, our staker assigns a pseudorandom multiplier to each NPC.  Most are very low (1x), but some may be high as 10x.  Here's an example distribution for a collection in one epoch:
 
-* Original Launch
-* Elon Musk era
-* SBF era
-* YOU DECIDE?
-
-Whenever a new Current Thing is announced, each NPC has a pseudorandom new multiplier assigned for this era.  Most are very low (1x), but some may be high as 10x, and earn $THING rewards at this rate.
+![NPC-ers distribution](https://substackcdn.com/image/fetch/w_1456,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F0fd03a23-ad67-4611-a358-5a1929ad4116_238x304.png)
 
 Due to the fact the NPC multiplier is deterministic by epoch, it’s possible to collect NPCs which will have a high multiplier to collect more $THING.  This means some NPCs with more common traits may nonetheless see utility for stakers.
 
+![NPC-ers multipliers by epoch](https://substackcdn.com/image/fetch/w_1456,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fadef60b6-b8ca-4e1d-9cff-446f2757aac0_746x472.png)
 
-One final note for whales — you get an additional multiplier based on the square root of the number of NPCs staked.   (c/f https://www.paradigm.xyz/2022/09/goo)
+One final note for whales — you get an additional multiplier based on the square root of the number of NPCs staked, inspired by [Paradigm's Goo](https://www.paradigm.xyz/2022/09/goo)
 
 Stake one NPC, and the NPC gets the exact multiplier stated on the tin.  Stake 4, and these are doubled.  Stake 9, the multipliers are tripled.  Not bad…
 
+![Bulk Bonus](https://substackcdn.com/image/fetch/w_1456,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1300ba6e-9376-4665-bcca-43e0deadf288_498x206.png)
 
 # ESG Compatibility
 
@@ -40,8 +40,14 @@ Any NPC can be “wrapped” as an ESG-NPC, which carries a one time wrapping co
 
 Wait, how do you determine a multiplier for wrapped NPCs?  Each new epoch of “Current Thing,” we average a handful of NPC multipliers and apply this to all wrapped NPCs.  If your NPC multiplier is below this amount, you may be able to obtain a higher multiplier by wrapping your NPC (with the knowledge that you may never see your NPC again).
 
+![esgNPC](https://substackcdn.com/image/fetch/w_1456,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa670a680-4f6c-47fd-b7fd-7e2f244ba37f_1210x478.png)
+
 The benefits of a wrapped NPC, in addition to the environmental gesture, are to promote greater conformity and mass formation psychosis.  The ability to best blend into a crowd and dissolve ones opinions into the collective is truly the highest form of achievement.
 
+# Addresses
+
+- **Steak**: [0x9b326BC227E00d1e6D3E94e668Eea6D2349B8b31](https://etherscan.io/address/0x9b326BC227E00d1e6D3E94e668Eea6D2349B8b31)
+- **esgNPC**: [0x41F2c48e901b6a0A19FEa0256826485045ce953b](https://etherscan.io/address/0x41F2c48e901b6a0A19FEa0256826485045ce953b)
 
 ## Setup Notes
 
