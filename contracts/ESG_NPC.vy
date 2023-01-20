@@ -161,6 +161,8 @@ def transferFrom(_from: address, _to: address, _value: uint256) -> bool:
     return True
 
 
+# WRAP
+
 @external
 def wrap(ids: DynArray[uint256, 100]):
     assert NFT.isApprovedForAll(msg.sender, self), "No Approval"
@@ -175,6 +177,9 @@ def wrap(ids: DynArray[uint256, 100]):
     self.balances[msg.sender] += len(ids) * 10**self.decimals
     self.current_counter += len(ids)
 
+
+# UNWRAP
+
 @internal
 def _unwrap_one(target: address):
     assert self.balances[msg.sender] >= 10 ** self.decimals, "Insufficient balance"
@@ -184,6 +189,7 @@ def _unwrap_one(target: address):
     NFT.transferFrom(self, target, self.owned_tokens[self.current_counter])
     self.balances[target] -= 10**self.decimals
     self.owned_tokens[self.current_counter] = 0
+
 
 @external
 def unwrap(qty: uint256):
@@ -199,3 +205,9 @@ def unwrap(qty: uint256):
             break
 
         self._unwrap_one(msg.sender)
+
+
+@external
+@view
+def npc_addr() -> address:
+    return NFT.address
