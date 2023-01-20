@@ -57,7 +57,7 @@ def esg_npc(npc):
 
 @pytest.fixture(scope="function")
 def staker(alice, thing, esg_npc, npc):
-    v = OrthodoxyCamp.deploy(npc, thing, esg_npc, {"from": alice})
+    v = OrthodoxyCamp.deploy(npc, esg_npc, thing, {"from": alice})
     thing.admin_set_minter(v, {"from": thing.owner()})
     return v
 

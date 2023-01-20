@@ -46,7 +46,7 @@ def test_withdraw_wnpc(staker, npc, esg_npc, esg_npc_holder, thing):
     thing_init = thing.balanceOf(esg_npc_holder)
     bal = esg_npc.balanceOf(esg_npc_holder)
     esg_npc.approve(staker, bal, {"from": esg_npc_holder})
-    staker.stake_wnpc(bal, {"from": esg_npc_holder})
+    staker.stake_esg_npc(bal, {"from": esg_npc_holder})
     chain.mine(5)
     staker.withdraw({"from": esg_npc_holder})
     assert thing.balanceOf(esg_npc_holder) > thing_init

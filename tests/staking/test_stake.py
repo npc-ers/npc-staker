@@ -67,20 +67,20 @@ def test_multiplier_changes_in_new_epoch(
 ):
     npc.setApprovalForAll(staker, True, {"from": multiholder})
     staker.stake_npc(multiholder_portfolio, {"from": multiholder})
-    init_multiplier = staker.calc_avg_multiplier(multiholder, staker.current_epoch())
+    init_multiplier = staker.calc_avg_multiplier_nft(multiholder, staker.current_epoch())
 
     staker.admin_trigger_epoch("New thing", {"from": staker.owner()})
-    assert init_multiplier != staker.calc_avg_multiplier(
+    assert init_multiplier != staker.calc_avg_multiplier_nft(
         multiholder, staker.current_epoch()
     )
 
 
 def test_wrap_via_staker(multistaked_nft, multiholder):
-    assert multistaked_nft.nft_balance(multiholder) > 0
+    assert multistaked_nft.balance_nft(multiholder) > 0
     init_bal = multistaked_nft.balanceOf(multiholder)
 
     multistaked_nft.wrap({"from": multiholder})
-    assert multistaked_nft.nft_balance(multiholder) == 0
+    assert multistaked_nft.balance_nft(multiholder) == 0
     assert init_bal == multistaked_nft.balanceOf(multiholder)
 
 
