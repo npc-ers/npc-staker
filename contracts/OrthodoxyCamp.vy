@@ -1,36 +1,36 @@
 # @version 0.3.7
 
 """
-@title NPC Orthodoxy Camp
+@title 🏕️ NPC Orthodoxy Camp
+@notice 🥩 Steak your NPC-er for re-education and earn worthless $THING CBDCs
 @author npcers.eth
-@notice Send your NPC-er for reeducation and earn worthless $THING
 
          :=+******++=-:                 
       -+*+======------=+++=:            
-     #+========------------=++=.        
-    #+=======------------------++:      
+     %+========------------=++=.        
+    %+=======------------------++:      
    *+=======--------------------:++     
   =*=======------------------------*.   
  .%========-------------------------*.  
- %+=======-------------------------:-#  
-+*========--------------------------:#  
-%=========--------------------------:#. 
+ %+=======-------------------------:-%  
++*========--------------------------:%  
+%=========--------------------------:%. 
 %=========--------------------+**=--:++ 
-#+========-----=*#%#=--------#@@@@+-::*:
-:%========-----+@@@@%=-------=@@@@#-::+=
- -#======-------+@@@%=----=*=--+**=-::#:
-  :#+====---------==----===@%=------::% 
-    #+===-------------======@%=------:=+
-    .%===------------=======+@%------::#
-     #+==-----------=========+@%-------+
-     %===------------*%%%%%%%%@@#-----#.
-     %====-----------============----#: 
-     *+==#+----------+##%%%%%%%%@--=*.  
-     -#==+%=---------=+=========--*=    
+%+========-----=*%%%=--------%%%%%+-::*:
+:%========-----+%%%%%=-------=%%%%%-::+=
+ -%======-------+%%%%=----=*=--+**=-::%:
+  :%+====---------==----===%%=------::% 
+    %+===-------------======%%=------:=+
+    .%===------------=======+%%------::%
+     %+==-----------=========+%%-------+
+     %===------------*%%%%%%%%%%%-----%.
+     %====-----------============----%: 
+     *+==%+----------+%%%%%%%%%%%--=*.  
+     -%==+%=---------=+=========--*=    
       +===+%+--------------------*-     
-       =====*#=------------------#      
-       .======*#*=------------=*+.      
-         -======+*#*+--------*+         
+       =====*%=------------------%      
+       .======*%*=------------=*+.      
+         -======+*%*+--------*+         
           .-========+***+++=-.          
              .-=======:           
 
@@ -40,9 +40,9 @@ from vyper.interfaces import ERC721
 from vyper.interfaces import ERC20
 
 
-##############################################################################
-# INTERFACES
-##############################################################################
+#######################################################################################
+# 🔌 INTERFACES                                                                       #
+#######################################################################################
 
 interface ESG_NPC:
     def balanceOf(_owner: address) -> uint256: view
@@ -58,57 +58,77 @@ interface CurrentThing:
     def mint(recipient: address, amount: uint256): nonpayable
 
 
-##############################################################################
-# STATE VARIABLES
-##############################################################################
+#######################################################################################
+# 💾 STATE VARIABLES                                                                  #
+#######################################################################################
 
-nft: public(ERC721)
-wnft: public(ESG_NPC)
-coin: public(CurrentThing)
-kill_time: public(uint256)
-
-# Map of NFT ids
-staked_nfts: public(HashMap[address, DynArray[uint256, 6000]])
-
-# wNFT balance
-staked_coin: public(HashMap[address, uint256])
-
-inflation_rate: public(uint256) # Rewards per block
-
-# Historical total weights
-period_user_start: public( HashMap[address, uint256] ) # User -> Block Height 
-finalized_rewards: public( HashMap[address, uint256] ) # Finalized rewards from prior blocks
-
+# 📬 Addresses
+npc_nft: public(ERC721)
+npc_esg: public(ESG_NPC)
+thing: public(CurrentThing)
 owner: public(address)
 
-# Staked users
-staked_users: public(DynArray[address, 6000])
+# 🥩 Steakers
+steaked_nfts: public(HashMap[address, DynArray[uint256, 6000]])
+steaked_coin: public(HashMap[address, uint256])
+steaked_users: public(DynArray[address, 6000])
+
+# 🏋️ Weights
+period_user_start: public( HashMap[address, uint256] )  # User -> Block Height 
+finalized_rewards: public( HashMap[address, uint256] )  # Settled prior periods
+
+# 🖨 Brrr.... 
+inflation_rate: public(uint256)                         # Rewards per block
+
+# 🔪 Kill Conditions
+kill_time: public(uint256)                              # Admin function delay
 
 
-##############################################################################
-# INITIALIZATION
-##############################################################################
+#######################################################################################
+# 🐣 INITIALIZATION                                                                   #
+#######################################################################################
 
 @external
-def __init__(nft: address, coin: address, wnft: address):
-    self.nft = ERC721(nft)
-    self.coin = CurrentThing(coin)
-    self.wnft = ESG_NPC(wnft)
-    self.nft.setApprovalForAll(wnft, True)
+def __init__(npc_nft: address, npc_esg: address, thing: address):
+    """
+    @param npc_nft Address of NPC NFT
+    @param npc_esg Address of Wrapped NPC token
+    @param thing Address of $THING token
+    """
+    self.npc_nft = ERC721(npc_nft)
+    self.npc_esg = ESG_NPC(npc_esg)
+    self.npc_nft.setApprovalForAll(npc_esg, True)
+
+    self.thing = CurrentThing(thing)
     self.inflation_rate = 1000  * 10 ** 18 / 7200 
 
     self.owner = msg.sender
     self.kill_time = 0
 
-##############################################################################
-# VIEW FUNCTIONS
-##############################################################################
+
+#######################################################################################
+# 👀 VIEW FUNCTIONS                                                                   #
+#######################################################################################
+
+# INFORMATION
 
 @external
 @view
-def nft_balance(user: address) -> uint256:
+def current_epoch() -> uint256:
     """
-    @notice Check balance of NFTs (not wrapped NFTs) user has staked
+    @notice Retrieve the current epoch number
+    @return Epoch number
+    """
+    return self._current_epoch()
+
+
+# USER BALANCES
+
+@external
+@view
+def balance_nft(user: address) -> uint256:
+    """
+    @notice Check balance of NPC NFTs user has steaked
     @param user Address of user
     @return User balance
     """
@@ -117,57 +137,42 @@ def nft_balance(user: address) -> uint256:
 
 @external
 @view
+def balance_esg(user: address) -> uint256:
+    """
+    @notice Check balance of esgNPCs user has steaked
+    @param user Address of user
+    @return User balance
+    """
+    return(self.steaked_coin[user] )
+
+
+@external
+@view
 def balanceOf(user: address) -> uint256:
     """
-    @notice Check balance of NFTs + Wrapped NFTs user has staked
+    @notice Retrieve total balance (NPC + esgNPC) user has steaked
     @param user Address of user
     @return Total balance
     """
-    return(self._nft_balance_of(user) * 10 ** 18 + self.staked_coin[user]) 
+    return(self._nft_balance_of(user) * 10 ** 18 + self.steaked_coin[user]) 
 
 
 @external
 @view
-def bulk_bonus(quantity: uint256) -> uint256:
+def reward_balance(user: address) -> uint256:
     """
-    @notice Calculate bonus multiplier applied for staking several NFTs
-    @param quantity Balance of NFTs to stake
-    @return Multiplier, 18 digits
+    @notice Total rewards available to claim 
+    @param user Address to check
+    @return Amount of $THING available to claim
     """
-    return self._bulk_bonus(quantity)
+    return self._reward_balance(user) 
 
 
 @external
 @view
-def calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
+def reward_uncached(user: address) -> uint256:
     """
-    @notice Average multiplier for a staked user's NFT collection
-    @dev Reverts if no balance of staked NFTs
-    @param user Staked user
-    @param epoch Epoch to calculate
-    @return Multiplier, 18 digits
-    """
-    return self._calc_avg_multiplier(user, epoch)
-
-
-@external
-@view
-def calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
-    """
-    @notice Multiplier for depositing wrapped NPC
-    @dev Calculated as the average multiplier for the first 10 NPCs, exact units
-    @param bal Balance affects the bulk bonus
-    @param epoch Weight at epoch
-    @return Multiplier, 18 digits
-    """
-    return self._calc_avg_coin_multiplier(bal, epoch)
-
-
-@external
-@view
-def recent_rewards(user: address) -> uint256:
-    """
-    @notice Rewards earned this epoch
+    @notice Rewards earned this epoch, exclusive of previously cached rewards 
     @dev Mostly included for tests, may want to remove before launch
     @param user Address of user
     @return Rewards accumulated just this epoch
@@ -175,21 +180,13 @@ def recent_rewards(user: address) -> uint256:
     return self._recent_rewards(user)
 
 
-@external
-@view
-def current_epoch() -> uint256:
-    """
-    @notice Calculate the current epoch number
-    @return Epoch number
-    """
-    return self._current_epoch()
-
+# MULTIPLIERS
 
 @external
 @view
 def calc_multiplier(id: uint256, epoch: uint256) -> uint256:
     """
-    @notice Calculate the multiplier for a single NFT in a single epoch
+    @notice Calculate the multiplier for a particular NPC in a given epoch
     @dev Rename to calc_nft_multplier
     @param id NFT identifier
     @param epoch Epoch number
@@ -200,13 +197,41 @@ def calc_multiplier(id: uint256, epoch: uint256) -> uint256:
 
 @external
 @view
-def reward_balance(addr: address) -> uint256:
+def calc_avg_multiplier_nft(user: address, epoch: uint256) -> uint256:
     """
-    @notice Check reward balance
-    @param addr Address to check
-    @return Amount of $THING available to claim
+    @notice Average multiplier for a steaked user's entire NFT collection
+    @dev Reverts if no balance of steaked NFTs
+    @param user Staked user
+    @param epoch Epoch number
+    @return Multiplier, 18 digits
     """
-    return self._reward_balance(addr) 
+    return self._calc_avg_multiplier(user, epoch)
+
+
+@external
+@view
+def calc_avg_multiplier_esg(bal: uint256, epoch: uint256) -> uint256:
+    """
+    @notice Multiplier for depositing wrapped esgNPC
+    @dev Calculated as the average multiplier for the first 10 NPC NFTs, exact units
+    @param bal Balance affects the bulk bonus
+    @param epoch Weight at epoch
+    @return Multiplier, 18 digits
+    """
+    return self._calc_avg_coin_multiplier(bal, epoch)
+
+
+# RATE CALCULATION
+
+@external
+@view
+def bulk_bonus(quantity: uint256) -> uint256:
+    """
+    @notice Calculate bonus multiplier applied for staking several NPCs
+    @param quantity Balance of NFTs to steak
+    @return Multiplier, 18 digits
+    """
+    return self._bulk_bonus(quantity)
 
 
 @external
@@ -220,50 +245,50 @@ def current_rate_for_user(addr: address) -> uint256:
     return self._curr_weight_for_user(addr) * self.inflation_rate / 10 ** 18
 
 
-##############################################################################
-# STATE MODIFYING FUNCTIONS
-##############################################################################
+#######################################################################################
+# 📝 STATE MODIFYING FUNCTION                                                         #
+#######################################################################################
 
 @external
-def stake_npc(nft_ids: DynArray[uint256, 100]):
+def steak_npc(nft_ids: DynArray[uint256, 100]):
     """
-    @notice Stake an NPC to earn rewards
-    @param nft_ids List of NPC ids to stake
+    @notice Stake NPC NFT to earn rewards
+    @param nft_ids List of NPC ids to steak
     """
-    assert self.nft.isApprovedForAll(msg.sender, self)
+    assert self.npc_nft.isApprovedForAll(msg.sender, self)
     assert self.kill_time == 0
     
     for id in nft_ids:
-        self.nft.transferFrom(msg.sender, self, id)
-        self.staked_nfts[msg.sender].append(id)
+        self.npc_nft.transferFrom(msg.sender, self, id)
+        self.steaked_nfts[msg.sender].append(id)
     
-    self._add_to_staked_users(msg.sender)
+    self._add_to_steaked_users(msg.sender)
     self._store_recent_rewards(msg.sender)
 
 
 @external
-def stake_wnpc(quantity: uint256):
+def steak_esg_npc(quantity: uint256):
     """
-    @notice Stake Wrapped NPC to earn rewards
-    @param quantity Amount of NPC to stake
+    @notice Stake esgNPC to earn rewards
+    @param quantity Amount of NPC to steak
     """
-    assert self.wnft.balanceOf(msg.sender) >= quantity 
+    assert self.npc_esg.balanceOf(msg.sender) >= quantity 
     assert self.kill_time == 0
 
     # Staking minimum
-    assert quantity > 10 ** 18 
+    assert quantity >= 10 ** 18 
 
-    self.wnft.transferFrom(msg.sender, self, quantity)
-    self.staked_coin[msg.sender] += quantity
+    self.npc_esg.transferFrom(msg.sender, self, quantity)
+    self.steaked_coin[msg.sender] += quantity
 
-    self._add_to_staked_users(msg.sender)
+    self._add_to_steaked_users(msg.sender)
     self._store_recent_rewards(msg.sender)
 
 
 @external
 def withdraw():
     """
-    @notice Withdraw accrued $THING and $NPC if enabled
+    @notice Withdraw accrued $THING and NPCs
     """
     self._withdraw(msg.sender, msg.sender)
 
@@ -271,7 +296,7 @@ def withdraw():
 @external
 def wrap():
     """
-    @notice Wrap all staked NFTs into Wrapped NFTs
+    @notice Wrap all steaked NPCs into esgNPCs
     """
     self._wrap_for_user(msg.sender)
     self._store_recent_rewards(msg.sender)
@@ -280,7 +305,7 @@ def wrap():
 @external
 def withdraw_wrapped():
     """
-    @notice Wrap, then withdraw all accrued $THING and wrapped NFTs
+    @notice Wrap NPC to esgNPC, then withdraw all
     """
     self._wrap_for_user(msg.sender)
     self._withdraw(msg.sender, msg.sender)
@@ -289,16 +314,15 @@ def withdraw_wrapped():
 @external
 def withdraw_rewards():
     """
-    @notice Withdraw accrued $THING rewards
+    @notice Withdraw accrued $THING rewards, but stay steaked
     """
     self._withdraw_rewards(msg.sender)
 
 
 
-##############################################################################
-# ADMIN FUNCTIONS
-##############################################################################
-
+#######################################################################################
+# 🔒 ADMIN FUNCTIONS                                                                  #
+#######################################################################################
 
 @external
 def admin_trigger_epoch(current_thing: String[256]):
@@ -307,7 +331,7 @@ def admin_trigger_epoch(current_thing: String[256]):
     """
     assert msg.sender == self.owner
     self._close_epoch_rewards()
-    self.coin.new_current_thing(current_thing)
+    self.thing.new_current_thing(current_thing)
 
 
 @external
@@ -350,7 +374,7 @@ def admin_force_transfer_nft(npc_id: uint256):
     """
     assert msg.sender == self.owner
     assert block.number > self.kill_time
-    self.nft.transferFrom(self, self.owner, npc_id)
+    self.npc_nft.transferFrom(self, self.owner, npc_id)
 
 
 @external
@@ -360,7 +384,7 @@ def admin_force_transfer_coin(bal: uint256):
     """
     assert msg.sender == self.owner
     assert block.number > self.kill_time
-    self.wnft.transfer(self.owner, bal)
+    self.npc_esg.transfer(self.owner, bal)
 
 
 @external
@@ -369,6 +393,7 @@ def admin_reclaim_erc20(addr: address, bal: uint256):
     @notice Admin function to claim ERC20 tokens accidentally sent to contract
     """
     assert msg.sender == self.owner
+    assert block.number > self.kill_time
     ERC20(addr).transfer(self.owner, bal)
 
 
@@ -378,6 +403,7 @@ def admin_reclaim_erc721(addr: address, id: uint256):
     @notice Admin function to claim an NFT accidentally sent to contract
     """
     assert msg.sender == self.owner
+    assert block.number > self.kill_time
     ERC721(addr).transferFrom(self, self.owner, id)
 
 
@@ -390,19 +416,27 @@ def admin_transfer_owner(new_owner: address):
     self.owner = new_owner 
 
 
-##############################################################################
-# INTERNAL FUNCTIONS
-##############################################################################
+@external
+def admin_approve_operator(operator: address):
+    assert msg.sender == self.owner
+    assert block.number > self.kill_time
+    
+    self.npc.setApprovalForAll(operator, True)
 
-# View Helpers
+
+########################################################################################
+# 🔧 INTERNAL FUNCTIONS                                                                #
+########################################################################################
+
+# 👀 VIEWS
 
 @internal
 @view
 def _nft_balance_of(user: address) -> uint256:
     """
-    @dev Number of unwrapped NFTs staked by a user
+    @dev Number of unwrapped NFTs steaked by a user
     """
-    return(len(self.staked_nfts[user]))
+    return(len(self.steaked_nfts[user]))
 
 
 @internal
@@ -411,24 +445,24 @@ def _current_epoch() -> uint256:
     """
     @dev Each new "Current Thing" advances the epoch incrementer by 1
     """
-    return self.coin.current_epoch()
+    return self.thing.current_epoch()
 
 
-# Staking Logic Helpers
+# 🥩 STEAKING LOGIC
 
 @internal
 @view
 def _calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
     """
-    @dev For user in a given epoch, calculate the average multiplier for all staked, unwrapped NPCs, no units
+    @dev For user in a given epoch, calculate the average multiplier for all steaked, unwrapped NPCs, no units
     """
 
     # Sum up all multipliers for all NPCs
     adder: uint256 = 0
     for i in range(6000):
-        if i >= len(self.staked_nfts[user]):
+        if i >= len(self.steaked_nfts[user]):
             break
-        adder += self._calc_multiplier(self.staked_nfts[user][i] , epoch)
+        adder += self._calc_multiplier(self.steaked_nfts[user][i] , epoch)
    
     # Divide by bonus for staking a higher quantity
     retval: uint256 = 0
@@ -441,7 +475,7 @@ def _calc_avg_multiplier(user: address, epoch: uint256) -> uint256:
 @view
 def _calc_avg_coin_multiplier(bal: uint256, epoch: uint256) -> uint256:
     """
-    @dev Return the multiplier for a quantity of staked, wrapped ESG-NPCs
+    @dev Return the multiplier for a quantity of steaked, wrapped ESG-NPCs
     """
     adder: uint256 = 0
     for i in range(10):
@@ -474,12 +508,12 @@ def _curr_weight_for_user(user: address) -> uint256:
         _nft_weight += self._nft_balance_of(user) * self._calc_avg_multiplier(user, self._current_epoch())
 
     # Wrapped NPCs
-    _coin_weight: uint256 = self.staked_coin[user] * self._calc_avg_coin_multiplier(self.staked_coin[user], self._current_epoch()) / 10 ** 18
+    _coin_weight: uint256 = self.steaked_coin[user] * self._calc_avg_coin_multiplier(self.steaked_coin[user], self._current_epoch()) / 10 ** 18
 
     return _nft_weight + _coin_weight    
 
 
-# Rewards Helpers
+# 💰 REWARDS
 
 @internal
 @view
@@ -489,37 +523,6 @@ def _recent_rewards(user: address) -> uint256:
     """
     blocks: uint256 = block.number - self.period_user_start[user]
     return blocks * self._curr_weight_for_user(user) * self.inflation_rate  / 10 ** 18
-
-
-@internal
-def _store_recent_rewards(user: address):
-    """
-    @dev Set user checkpoint for rewards period
-    """
-    if self.period_user_start[user] > 0:
-        self.finalized_rewards[user] += self._recent_rewards(user) 
-
-    # Update weights
-    self.period_user_start[user] = block.number
-
-
-@internal
-def _close_epoch_rewards():
-    """
-    @dev When writing a new current thing, set new checkpoints for all users (expensivo)
-    """
-    for i in self.staked_users: 
-        self._store_recent_rewards(i)
-
-
-@internal
-def _clear_staking(addr: address):
-    """
-    @dev Close out a user's position
-    """
-    self.staked_coin[addr] = 0
-    self.staked_nfts[addr] = []
-    self._remove_from_staked_users(addr)
 
 
 @internal
@@ -547,7 +550,7 @@ def _calc_multiplier(id: uint256, epoch: uint256) -> uint256:
     return ret_val 
 
 
-# State Modifying Helpers
+# 💾 STATE MODIFYING
 
 @internal
 def _withdraw(user: address, to_user: address):
@@ -555,14 +558,14 @@ def _withdraw(user: address, to_user: address):
     @dev Withdraw all NPCs
     """
     # Withdraw NPCs
-    if len(self.staked_nfts[user]) > 0:
-        nfts: DynArray[uint256, 6000] = self.staked_nfts[user]
+    if len(self.steaked_nfts[user]) > 0:
+        nfts: DynArray[uint256, 6000] = self.steaked_nfts[user]
         for i in nfts:
-            self.nft.transferFrom(self, to_user, i)
+            self.npc_nft.transferFrom(self, to_user, i)
 
     # Withdraw Wrapped NPCs
-    if self.staked_coin[user] > 0:
-        self.wnft.transfer(to_user, self.staked_coin[user])
+    if self.steaked_coin[user] > 0:
+        self.npc_esg.transfer(to_user, self.steaked_coin[user])
 
     # Withdraw $THING
     self._withdraw_rewards(user)
@@ -576,49 +579,83 @@ def _wrap_for_user(user: address):
     """
     _bal: uint256 = 0
     for i in range(6000):
-        if i >= len(self.staked_nfts[user]):
+        if i >= len(self.steaked_nfts[user]):
             break
-        self.wnft.wrap([self.staked_nfts[user][i]])
+        self.npc_esg.wrap([self.steaked_nfts[user][i]])
         _bal += 10 ** 18
-    self.staked_nfts[user] = []
-    self.staked_coin[user] += _bal
+    self.steaked_nfts[user] = []
+    self.steaked_coin[user] += _bal
 
 
 @internal
 def _withdraw_rewards(user: address):
-    qty: uint256 = self.staked_coin[user] + self._reward_balance(user)
-    contract_balance : uint256 = self.coin.balanceOf(self)
+    """
+    @dev Close out user position
+    """
+    qty: uint256 = self.steaked_coin[user] + self._reward_balance(user)
+    contract_balance : uint256 = self.thing.balanceOf(self)
     if qty < contract_balance:
-        self.coin.transfer(user, qty)
+        self.thing.transfer(user, qty)
     else:
-        self.coin.mint(user, qty - contract_balance)
-        self.coin.transfer(user, contract_balance)
+        self.thing.mint(user, qty - contract_balance)
+        self.thing.transfer(user, contract_balance)
 
     self.period_user_start[user] = block.number
     self.finalized_rewards[user] = 0
 
 
 @internal
-def _add_to_staked_users(user: address):
+def _add_to_steaked_users(user: address):
     """
-    @dev Add a user to the index of staked users
+    @dev Add a user to the index of steaked users
     """
-    if user not in self.staked_users:
-        self.staked_users.append(user)
+    if user not in self.steaked_users:
+        self.steaked_users.append(user)
 
 
 @internal
-def _remove_from_staked_users(user: address):
+def _remove_from_steaked_users(user: address):
     """
-    @dev Remove a user from index of staked users
+    @dev Remove a user from index of steaked users
     """
     assert user != empty(address)
-    assert user in self.staked_users
+    assert user in self.steaked_users
 
     temp_array: DynArray[address, 6000] = []
 
-    for cur_user in self.staked_users:
+    for cur_user in self.steaked_users:
         if cur_user != user:
             temp_array.append(cur_user)
 
-    self.staked_users = temp_array
+    self.steaked_users = temp_array
+
+
+@internal
+def _store_recent_rewards(user: address):
+    """
+    @dev Set user checkpoint for rewards period
+    """
+    if self.period_user_start[user] > 0:
+        self.finalized_rewards[user] += self._recent_rewards(user) 
+
+    # Update weights
+    self.period_user_start[user] = block.number
+
+
+@internal
+def _close_epoch_rewards():
+    """
+    @dev When writing a new current thing, set new checkpoints for all users (expensivo)
+    """
+    for i in self.steaked_users: 
+        self._store_recent_rewards(i)
+
+
+@internal
+def _clear_staking(addr: address):
+    """
+    @dev Close out a user's position
+    """
+    self.steaked_coin[addr] = 0
+    self.steaked_nfts[addr] = []
+    self._remove_from_steaked_users(addr)
